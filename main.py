@@ -166,7 +166,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     source_chat_id = OWNER_ID  # The message is in the owner's private chat with the bot
     
     # Check if the replied message is a forwarded message
-    is_scheduled_forward = replied_msg.forward_from is not None or replied_msg.forward_from_chat is not None
+    is_scheduled_forward = (getattr(replied_msg, 'forward_from', None) is not None or 
+                            getattr(replied_msg, 'forward_from_chat', None) is not None)
     
     # Add schedule to database
     schedule_id = db.add_schedule(
