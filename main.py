@@ -361,7 +361,7 @@ async def delete_schedule(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("❌ សូមផ្ដល់លេខកាលវិពន្ធ")
             return
         
-        schedule_id = int(context.args[0].rstrip('.'))
+        schedule_id = int(context.args[0].lstrip('#').rstrip('.'))
         if not schedule_id:
             await update.message.reply_text("❌ សូមផ្ដល់លេខកាលវិពន្ធ")
             return
