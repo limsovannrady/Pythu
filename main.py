@@ -99,13 +99,16 @@ async def send_scheduled_message(schedule_id: int):
         # Prepare caption with sender info if forwarded
         caption = None
         if schedule["forward_sender_name"]:
-            caption = f"📩 Forwarded Message\n\n👤 From: {schedule['forward_sender_name']}\n\n{schedule['message_content']}"
+            caption = f"📩 សារលាក់ទុក\n\n👤 ចាប់ផ្តើមពី: {schedule['forward_sender_name']}\n\n{schedule['message_content']}"
         
         # Send based on message type
         if msg_type == "text":
+            text_to_send = schedule['message_content']
+            if schedule["forward_sender_name"]:
+                text_to_send = f"📩 សារលាក់ទុក\n\n👤 ចាប់ផ្តើមពី: {schedule['forward_sender_name']}\n\n{schedule['message_content']}"
             await bot.send_message(
                 chat_id=group_id,
-                text=schedule['message_content']
+                text=text_to_send
             )
         elif msg_type == "photo":
             await bot.send_photo(
