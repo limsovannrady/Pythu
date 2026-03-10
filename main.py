@@ -86,7 +86,7 @@ async def parse_schedule_format(text: str) -> Optional[dict]:
         return None
 
 async def send_scheduled_message(schedule_id: int):
-    """Send a scheduled message to the group using forward_message"""
+    """Send a scheduled message to the group"""
     schedule = db.get_schedule(schedule_id)
     if not schedule:
         return
@@ -95,14 +95,23 @@ async def send_scheduled_message(schedule_id: int):
         group_id = int(schedule["group_id"])
         source_chat_id = schedule["source_chat_id"]
         source_message_id = schedule["source_message_id"]
+        is_scheduled_forward = schedule.get("is_scheduled_forward", False)
         bot = app_instance.bot
         
-        # Forward the message from source to group
-        await bot.forward_message(
-            chat_id=group_id,
-            from_chat_id=source_chat_id,
-            message_id=source_message_id
-        )
+        # If this is a scheduled forward, use forward_message (shows "forwarded from")
+        # If this is NOT a scheduled forward, use copy_message (doesn't show original sender)
+        if is_scheduled_forward:
+            await bot.forward_message(
+                chat_id=group_id,
+                from_chat_id=source_chat_id,
+                message_id=source_message_id
+            )
+        else:
+            await bot.copy_message(
+                chat_id=group_id,
+                from_chat_id=source_chat_id,
+                message_id=source_message_id
+            )
         
         # Update status to sent
         db.update_status(schedule_id, "sent")
@@ -156,12 +165,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     source_message_id = replied_msg.message_id
     source_chat_id = OWNER_ID  # The message is in the owner's private chat with the bot
     
+    # Check if the replied message is a forwarded message
+    is_scheduled_forward = replied_msg.forward_from is not None or replied_msg.forward_from_chat is not None
+    
     # Add schedule to database
     schedule_id = db.add_schedule(
         source_chat_id=source_chat_id,
         source_message_id=source_message_id,
         group_id=schedule_data["group_id"],
-        schedule_time=schedule_data["datetime"].isoformat()
+        schedule_time=schedule_data["datetime"].isoformat(),
+        is_scheduled_forward=is_scheduled_forward
     )
     
     # Schedule the message

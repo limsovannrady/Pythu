@@ -18,7 +18,7 @@ class Database:
                 json.dump({"schedules": [], "next_id": 1}, f)
     
     def add_schedule(self, source_chat_id: int, source_message_id: int, group_id: str, 
-                     schedule_time: str) -> int:
+                     schedule_time: str, is_scheduled_forward: bool = False) -> int:
         """Add a new schedule and return its ID"""
         with open(self.db_file, 'r') as f:
             data = json.load(f)
@@ -31,6 +31,7 @@ class Database:
             "group_id": group_id,
             "schedule_time": schedule_time,
             "status": "pending",
+            "is_scheduled_forward": is_scheduled_forward,
             "created_at": datetime.now().isoformat()
         }
         
