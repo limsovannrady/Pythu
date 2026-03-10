@@ -22,6 +22,7 @@ PORT = int(os.getenv("PORT", "8080"))
 # Initialize database and scheduler
 db = Database()
 scheduler = AsyncIOScheduler(timezone=pytz.timezone('Asia/Phnom_Penh'))
+app_instance = None  # Will be set in main()
 
 # Khmer messages
 MESSAGES = {
@@ -84,7 +85,7 @@ async def parse_schedule_format(text: str) -> Optional[dict]:
     except:
         return None
 
-async def send_scheduled_message(context: ContextTypes.DEFAULT_TYPE, schedule_id: int):
+async def send_scheduled_message(schedule_id: int):
     """Send a scheduled message to the group"""
     schedule = db.get_schedule(schedule_id)
     if not schedule:
@@ -93,6 +94,7 @@ async def send_scheduled_message(context: ContextTypes.DEFAULT_TYPE, schedule_id
     try:
         msg_type = schedule["message_type"]
         group_id = int(schedule["group_id"])
+        bot = app_instance.bot
         
         # Prepare caption with sender info if forwarded
         caption = None
@@ -101,73 +103,73 @@ async def send_scheduled_message(context: ContextTypes.DEFAULT_TYPE, schedule_id
         
         # Send based on message type
         if msg_type == "text":
-            await context.bot.send_message(
+            await bot.send_message(
                 chat_id=group_id,
                 text=schedule['message_content']
             )
         elif msg_type == "photo":
-            await context.bot.send_photo(
+            await bot.send_photo(
                 chat_id=group_id,
                 photo=schedule['file_id'],
                 caption=caption or schedule['message_content']
             )
         elif msg_type == "video":
-            await context.bot.send_video(
+            await bot.send_video(
                 chat_id=group_id,
                 video=schedule['file_id'],
                 caption=caption or schedule['message_content']
             )
         elif msg_type == "document":
-            await context.bot.send_document(
+            await bot.send_document(
                 chat_id=group_id,
                 document=schedule['file_id'],
                 caption=caption or schedule['message_content']
             )
         elif msg_type == "voice":
-            await context.bot.send_voice(
+            await bot.send_voice(
                 chat_id=group_id,
                 voice=schedule['file_id'],
                 caption=caption or schedule['message_content']
             )
         elif msg_type == "video_note":
-            await context.bot.send_video_note(
+            await bot.send_video_note(
                 chat_id=group_id,
                 video_note=schedule['file_id']
             )
         elif msg_type == "audio":
-            await context.bot.send_audio(
+            await bot.send_audio(
                 chat_id=group_id,
                 audio=schedule['file_id'],
                 caption=caption or schedule['message_content']
             )
         elif msg_type == "animation":
-            await context.bot.send_animation(
+            await bot.send_animation(
                 chat_id=group_id,
                 animation=schedule['file_id'],
                 caption=caption or schedule['message_content']
             )
         elif msg_type == "sticker":
-            await context.bot.send_sticker(
+            await bot.send_sticker(
                 chat_id=group_id,
                 sticker=schedule['file_id']
             )
         elif msg_type == "contact":
             contact_data = json.loads(schedule['message_content'])
-            await context.bot.send_contact(
+            await bot.send_contact(
                 chat_id=group_id,
                 phone_number=contact_data['phone'],
                 first_name=contact_data['first_name']
             )
         elif msg_type == "location":
             loc_data = json.loads(schedule['message_content'])
-            await context.bot.send_location(
+            await bot.send_location(
                 chat_id=group_id,
                 latitude=loc_data['latitude'],
                 longitude=loc_data['longitude']
             )
         elif msg_type == "poll":
             poll_data = json.loads(schedule['message_content'])
-            await context.bot.send_poll(
+            await bot.send_poll(
                 chat_id=group_id,
                 question=poll_data['question'],
                 options=poll_data['options'],
@@ -184,7 +186,7 @@ async def send_scheduled_message(context: ContextTypes.DEFAULT_TYPE, schedule_id
             time=time_str,
             group_id=schedule['group_id']
         )
-        await context.bot.send_message(chat_id=OWNER_ID, text=notification)
+        await bot.send_message(chat_id=OWNER_ID, text=notification)
         
         logger.info(f"Sent scheduled message {schedule_id}")
     except Exception as e:
@@ -305,7 +307,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         send_scheduled_message,
         'date',
         run_date=schedule_data["datetime"],
-        args=(context, schedule_id),
+        args=(schedule_id,),
         id=f"schedule_{schedule_id}"
     )
     
@@ -393,8 +395,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     """Start the bot"""
+    global app_instance
     # Create application
     app = Application.builder().token(BOT_TOKEN).build()
+    app_instance = app  # Store app instance for scheduler jobs
     
     # Start scheduler
     if not scheduler.running:
