@@ -1,0 +1,412 @@
+import os
+import json
+from datetime import datetime
+from typing import Optional
+import pytz
+import logging
+from telegram import Update, Chat
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from database import Database
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Load environment variables
+BOT_TOKEN = os.getenv("BOT_TOKEN", "8727994473:AAGH3ZVyiM6wmBWCUncTrypVGgL73k3iy9c")
+OWNER_ID = int(os.getenv("OWNER_ID", "5002402843"))
+WEBHOOK_URL = os.getenv("WEBHOOK_URL", "")
+PORT = int(os.getenv("PORT", "8080"))
+
+# Initialize database and scheduler
+db = Database()
+scheduler = AsyncIOScheduler(timezone=pytz.timezone('Asia/Phnom_Penh'))
+
+# Khmer messages
+MESSAGES = {
+    "owner_only": "⛔ អ្នកមិនមានសិទ្ធិប្រើ Bot នេះទេ",
+    "private_only": "⚠️ សូមធ្វើការកំណត់ពេលក្នុង Private Chat ប៉ុណ្ណោះ",
+    "past_time": "❌ មិនអាចកំណត់ពេលអតីតកាលបានទេ\n\nសូមកំណត់ពេលវេលាខាងមុខ។",
+    "invalid_format": "❌ ស្ទង់មើលលម្អិត\n\nរូបរាង:\n📅 DD-MM-YYYY HH:MM GROUP_ID\n\nឧទាហរណ៍:\n25-03-2026 18:30 -1001234567890",
+    "success": "✅ កំណត់ពេលបានជោគជ័យ\n\n📅 ថ្ងៃ: {date}\n⏰ ម៉ោង: {time}\n👥 Group ID: {group_id}\n📊 Status: Pending ⏳",
+    "sent": "✅ សារត្រូវបានផ្ញើដោយជោគជ័យ\n\n📅 {date}\n⏰ {time}\n👥 Group ID: {group_id}\n📊 Status: បានផ្ញើ ✅",
+    "list_header": "📋 បញ្ជី Schedule Messages",
+    "no_schedules": "📋 គ្មានលេខកាលវិ按",
+    "deleted": "🗑 Schedule #{id} ត្រូវបានលុបរួចរាល់",
+    "delete_error": "❌ មិនរកឃើញលេខកាលវិពន្ធ #{id}",
+}
+
+def format_time(dt_str: str) -> tuple:
+    """Parse schedule_time from DB and return date, time strings"""
+    try:
+        dt = datetime.fromisoformat(dt_str)
+        return dt.strftime("%d-%m-%Y"), dt.strftime("%H:%M")
+    except:
+        return dt_str.split()[0], dt_str.split()[1] if len(dt_str.split()) > 1 else "00:00"
+
+async def check_owner(update: Update) -> bool:
+    """Check if user is the bot owner"""
+    return update.effective_user.id == OWNER_ID
+
+async def check_private(update: Update) -> bool:
+    """Check if message is in private chat"""
+    return update.effective_chat.type == Chat.PRIVATE
+
+async def parse_schedule_format(text: str) -> Optional[dict]:
+    """Parse schedule format: DD-MM-YYYY HH:MM GROUP_ID"""
+    try:
+        parts = text.strip().split()
+        if len(parts) < 3:
+            return None
+        
+        date_str = parts[0]  # DD-MM-YYYY
+        time_str = parts[1]  # HH:MM
+        group_id = parts[2]   # GROUP_ID
+        
+        # Validate date format
+        dt = datetime.strptime(f"{date_str} {time_str}", "%d-%m-%Y %H:%M")
+        
+        # Check if time is in future
+        tz = pytz.timezone('Asia/Phnom_Penh')
+        dt_tz = tz.localize(dt)
+        now_tz = datetime.now(tz)
+        
+        if dt_tz <= now_tz:
+            return None
+        
+        return {
+            "date": date_str,
+            "time": time_str,
+            "group_id": group_id,
+            "datetime": dt_tz
+        }
+    except:
+        return None
+
+async def send_scheduled_message(context: ContextTypes.DEFAULT_TYPE, schedule_id: int):
+    """Send a scheduled message to the group"""
+    schedule = db.get_schedule(schedule_id)
+    if not schedule:
+        return
+    
+    try:
+        msg_type = schedule["message_type"]
+        group_id = int(schedule["group_id"])
+        
+        # Prepare caption with sender info if forwarded
+        caption = None
+        if schedule["forward_sender_name"]:
+            caption = f"📩 Forwarded Message\n\n👤 From: {schedule['forward_sender_name']}\n\n{schedule['message_content']}"
+        
+        # Send based on message type
+        if msg_type == "text":
+            await context.bot.send_message(
+                chat_id=group_id,
+                text=schedule['message_content']
+            )
+        elif msg_type == "photo":
+            await context.bot.send_photo(
+                chat_id=group_id,
+                photo=schedule['file_id'],
+                caption=caption or schedule['message_content']
+            )
+        elif msg_type == "video":
+            await context.bot.send_video(
+                chat_id=group_id,
+                video=schedule['file_id'],
+                caption=caption or schedule['message_content']
+            )
+        elif msg_type == "document":
+            await context.bot.send_document(
+                chat_id=group_id,
+                document=schedule['file_id'],
+                caption=caption or schedule['message_content']
+            )
+        elif msg_type == "voice":
+            await context.bot.send_voice(
+                chat_id=group_id,
+                voice=schedule['file_id'],
+                caption=caption or schedule['message_content']
+            )
+        elif msg_type == "video_note":
+            await context.bot.send_video_note(
+                chat_id=group_id,
+                video_note=schedule['file_id']
+            )
+        elif msg_type == "audio":
+            await context.bot.send_audio(
+                chat_id=group_id,
+                audio=schedule['file_id'],
+                caption=caption or schedule['message_content']
+            )
+        elif msg_type == "animation":
+            await context.bot.send_animation(
+                chat_id=group_id,
+                animation=schedule['file_id'],
+                caption=caption or schedule['message_content']
+            )
+        elif msg_type == "sticker":
+            await context.bot.send_sticker(
+                chat_id=group_id,
+                sticker=schedule['file_id']
+            )
+        elif msg_type == "contact":
+            contact_data = json.loads(schedule['message_content'])
+            await context.bot.send_contact(
+                chat_id=group_id,
+                phone_number=contact_data['phone'],
+                first_name=contact_data['first_name']
+            )
+        elif msg_type == "location":
+            loc_data = json.loads(schedule['message_content'])
+            await context.bot.send_location(
+                chat_id=group_id,
+                latitude=loc_data['latitude'],
+                longitude=loc_data['longitude']
+            )
+        elif msg_type == "poll":
+            poll_data = json.loads(schedule['message_content'])
+            await context.bot.send_poll(
+                chat_id=group_id,
+                question=poll_data['question'],
+                options=poll_data['options'],
+                is_quiz=poll_data.get('is_quiz', False)
+            )
+        
+        # Update status to sent
+        db.update_status(schedule_id, "sent")
+        
+        # Notify owner
+        date_str, time_str = format_time(schedule['schedule_time'])
+        notification = MESSAGES["sent"].format(
+            date=date_str,
+            time=time_str,
+            group_id=schedule['group_id']
+        )
+        await context.bot.send_message(chat_id=OWNER_ID, text=notification)
+        
+        logger.info(f"Sent scheduled message {schedule_id}")
+    except Exception as e:
+        logger.error(f"Error sending scheduled message {schedule_id}: {e}")
+
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle incoming messages"""
+    # Check owner
+    if not await check_owner(update):
+        await update.message.reply_text(MESSAGES["owner_only"])
+        return
+    
+    # Check private chat
+    if not await check_private(update):
+        return  # Silently ignore
+    
+    # Check if this is a reply
+    if not update.message.reply_to_message:
+        await update.message.reply_text(
+            "💬 សូមឆ្លើយតម្លើងលើសារដែលលាក់ទុក\n\n"
+            "ដូចនេះ៖\n"
+            "1️⃣ ផ្ញើសារណាមួយ\n"
+            "2️⃣ ឆ្លើយតម្លើងលើសារ\n"
+            "3️⃣ វាយបញ្ចូលលម្អិត៖ DD-MM-YYYY HH:MM GROUP_ID"
+        )
+        return
+    
+    # Parse schedule format from reply
+    schedule_data = await parse_schedule_format(update.message.text)
+    if not schedule_data:
+        await update.message.reply_text(MESSAGES["invalid_format"] if "-" in update.message.text else MESSAGES["past_time"])
+        return
+    
+    # Get replied message
+    replied_msg = update.message.reply_to_message
+    msg_type = "text"
+    msg_content = ""
+    file_id = None
+    forward_sender_name = None
+    
+    # Detect message type and extract content
+    if replied_msg.text:
+        msg_type = "text"
+        msg_content = replied_msg.text
+    elif replied_msg.photo:
+        msg_type = "photo"
+        file_id = replied_msg.photo[-1].file_id
+        msg_content = replied_msg.caption or ""
+    elif replied_msg.video:
+        msg_type = "video"
+        file_id = replied_msg.video.file_id
+        msg_content = replied_msg.caption or ""
+    elif replied_msg.document:
+        msg_type = "document"
+        file_id = replied_msg.document.file_id
+        msg_content = replied_msg.caption or ""
+    elif replied_msg.voice:
+        msg_type = "voice"
+        file_id = replied_msg.voice.file_id
+        msg_content = replied_msg.caption or ""
+    elif replied_msg.video_note:
+        msg_type = "video_note"
+        file_id = replied_msg.video_note.file_id
+    elif replied_msg.audio:
+        msg_type = "audio"
+        file_id = replied_msg.audio.file_id
+        msg_content = replied_msg.caption or ""
+    elif replied_msg.animation:
+        msg_type = "animation"
+        file_id = replied_msg.animation.file_id
+        msg_content = replied_msg.caption or ""
+    elif replied_msg.sticker:
+        msg_type = "sticker"
+        file_id = replied_msg.sticker.file_id
+    elif replied_msg.contact:
+        msg_type = "contact"
+        contact = replied_msg.contact
+        msg_content = json.dumps({
+            "phone": contact.phone_number,
+            "first_name": contact.first_name,
+            "last_name": contact.last_name or ""
+        })
+    elif replied_msg.location:
+        msg_type = "location"
+        msg_content = json.dumps({
+            "latitude": replied_msg.location.latitude,
+            "longitude": replied_msg.location.longitude
+        })
+    elif replied_msg.poll:
+        msg_type = "poll"
+        poll = replied_msg.poll
+        msg_content = json.dumps({
+            "question": poll.question,
+            "options": [opt.text for opt in poll.options],
+            "is_quiz": poll.is_quiz
+        })
+    
+    # Check for forwarded message
+    if replied_msg.forward_from:
+        forward_sender_name = replied_msg.forward_from.first_name
+        if replied_msg.forward_from.last_name:
+            forward_sender_name += f" {replied_msg.forward_from.last_name}"
+    elif replied_msg.forward_sender_name:
+        forward_sender_name = replied_msg.forward_sender_name
+    
+    # Add schedule to database
+    schedule_id = db.add_schedule(
+        message_type=msg_type,
+        message_content=msg_content,
+        group_id=schedule_data["group_id"],
+        schedule_time=schedule_data["datetime"].isoformat(),
+        forward_sender_name=forward_sender_name,
+        file_id=file_id
+    )
+    
+    # Schedule the message
+    scheduler.add_job(
+        send_scheduled_message,
+        'date',
+        run_date=schedule_data["datetime"],
+        args=(context, schedule_id),
+        id=f"schedule_{schedule_id}"
+    )
+    
+    # Send confirmation
+    confirmation = MESSAGES["success"].format(
+        date=schedule_data["date"],
+        time=schedule_data["time"],
+        group_id=schedule_data["group_id"]
+    )
+    await update.message.reply_text(confirmation)
+
+async def list_schedules(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """List all schedules"""
+    if not await check_owner(update):
+        await update.message.reply_text(MESSAGES["owner_only"])
+        return
+    
+    schedules = db.get_all_schedules()
+    if not schedules:
+        await update.message.reply_text(MESSAGES["no_schedules"])
+        return
+    
+    response = MESSAGES["list_header"] + "\n\n"
+    for i, schedule in enumerate(schedules, 1):
+        date_str, time_str = format_time(schedule['schedule_time'])
+        status_text = "Pending ⏳" if schedule['status'] == "pending" else "បានផ្ញើ ✅"
+        response += f"{i}️⃣ {date_str} {time_str}\nGroup: {schedule['group_id']}\nStatus: {status_text}\n\n"
+    
+    await update.message.reply_text(response)
+
+async def delete_schedule(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Delete a schedule"""
+    if not await check_owner(update):
+        await update.message.reply_text(MESSAGES["owner_only"])
+        return
+    
+    try:
+        schedule_id = int(context.args[0]) if context.args else None
+        if not schedule_id:
+            await update.message.reply_text("❌ សូមផ្ដល់លេខកាលវិពន្ធ")
+            return
+        
+        if db.delete_schedule(schedule_id):
+            # Cancel job if exists
+            try:
+                scheduler.remove_job(f"schedule_{schedule_id}")
+            except:
+                pass
+            
+            await update.message.reply_text(MESSAGES["deleted"].format(id=schedule_id))
+        else:
+            await update.message.reply_text(MESSAGES["delete_error"].format(id=schedule_id))
+    except:
+        await update.message.reply_text("❌ ប្រឹងម្តងទៀត")
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Start command"""
+    if not await check_owner(update):
+        await update.message.reply_text(MESSAGES["owner_only"])
+        return
+    
+    welcome = (
+        "👋 សូមស្វាគមន៍មកកាន់ Schedule Bot!\n\n"
+        "📋 ការណ្តើម៖\n"
+        "/list - ដើម្បីមើលលេខកាលវិពន្ធ\n"
+        "/delete [ID] - ដើម្បីលុបលេខកាលវិពន្ធ\n\n"
+        "💬 ដើម្បីកំណត់ពេល:\n"
+        "1️⃣ ផ្ញើសារណាមួយ\n"
+        "2️⃣ ឆ្លើយតម្លើងលើសារ\n"
+        "3️⃣ វាយបញ្ចូល: DD-MM-YYYY HH:MM GROUP_ID"
+    )
+    await update.message.reply_text(welcome)
+
+def main():
+    """Start the bot"""
+    # Create application
+    app = Application.builder().token(BOT_TOKEN).build()
+    
+    # Start scheduler
+    if not scheduler.running:
+        scheduler.start()
+        logger.info("Scheduler started")
+    
+    # Add handlers
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("list", list_schedules))
+    app.add_handler(CommandHandler("delete", delete_schedule))
+    app.add_handler(MessageHandler(filters.REPLY & ~filters.COMMAND, handle_message))
+    
+    # Use webhook if URL is provided, otherwise polling
+    if WEBHOOK_URL:
+        logger.info(f"Starting bot with webhook: {WEBHOOK_URL}")
+        app.run_webhook(
+            listen="0.0.0.0",
+            port=PORT,
+            url_path=BOT_TOKEN,
+            webhook_url=f"{WEBHOOK_URL}/{BOT_TOKEN}"
+        )
+    else:
+        logger.info("Starting bot with polling")
+        app.run_polling()
+
+if __name__ == "__main__":
+    main()
