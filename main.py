@@ -32,7 +32,7 @@ MESSAGES = {
     "invalid_format": "❌ ស្ទង់មើលលម្អិត\n\nរូបរាង:\n📅 DD-MM-YYYY HH:MM GROUP_ID\n\nឧទាហរណ៍:\n25-03-2026 18:30 -1001234567890",
     "success": "✅ កំណត់ពេលបានជោគជ័យ\n\n📅 ថ្ងៃ: {date}\n⏰ ម៉ោង: {time}\n👥 Group ID: {group_id}\n📊 Status: Pending ⏳",
     "sent": "✅ សារត្រូវបានផ្ញើដោយជោគជ័យ\n\n📅 {date}\n⏰ {time}\n👥 Group ID: {group_id}\n📊 Status: បានផ្ញើ ✅",
-    "list_header": "📋 បញ្ជី Schedule Messages",
+    "list_header": "📋 បញ្ជីកាលវិភាគសារ (Schedule Messages)",
     "no_schedules": "📋 គ្មានលេខកាលវិ按",
     "deleted": "🗑 Schedule #{id} ត្រូវបានលុបរួចរាល់",
     "delete_error": "❌ មិនរកឃើញលេខកាលវិពន្ធ #{id}",
@@ -342,8 +342,14 @@ async def list_schedules(update: Update, context: ContextTypes.DEFAULT_TYPE):
     response = MESSAGES["list_header"] + "\n\n"
     for schedule in pending_schedules:
         date_str, time_str = format_time(schedule['schedule_time'])
-        response += f"#{schedule['id']} {date_str} {time_str}\nGroup: {schedule['group_id']}\nStatus: Pending ⏳\n\n"
+        response += f"━━━━━━━━━━━━━━━━\n\n"
+        response += f"📝 Schedule #{schedule['id']}\n"
+        response += f"📅 កាលបរិច្ឆេទ: {date_str}\n"
+        response += f"⏰ ម៉ោង: {time_str}\n"
+        response += f"👥 Group ID: {schedule['group_id']}\n"
+        response += f"📌 ស្ថានភាព: ⏳ Pending\n\n"
     
+    response += "━━━━━━━━━━━━━━━━"
     await update.message.reply_text(response)
 
 async def delete_schedule(update: Update, context: ContextTypes.DEFAULT_TYPE):

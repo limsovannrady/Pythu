@@ -10,40 +10,7 @@
       "status": "sent",
       "forward_sender_name": null,
       "created_at": "2026-03-10T12:56:52.232986"
-    },
-    {
-      "id": 5,
-      "message_type": "photo",
-      "message_content": "",
-      "file_id": "AgACAgUAAxkBAAIDHWmwEeSs4c2rKFwMATQc3SnOEUk_AAJJD2sbujmBVeX2mkhEhwEnAQADAgADeQADOgQ",
-      "group_id": "-1003611124015",
-      "schedule_time": "2026-03-10T20:05:00+07:00",
-      "status": "pending",
-      "forward_sender_name": null,
-      "created_at": "2026-03-10T13:04:26.528717"
-    },
-    {
-      "id": 7,
-      "message_type": "text",
-      "message_content": "✅ កំណត់ពេលបានជោគជ័យ\n\n📅 ថ្ងៃ: 10-03-2026\n⏰ ម៉ោង: 20:06\n👥 Group ID: -1003611124015\n📊 Status: Pending ⏳",
-      "file_id": null,
-      "group_id": "-1003611124015",
-      "schedule_time": "2026-03-10T20:08:00+07:00",
-      "status": "pending",
-      "forward_sender_name": null,
-      "created_at": "2026-03-10T13:07:09.618035"
-    },
-    {
-      "id": 10,
-      "message_type": "text",
-      "message_content": "10-03-2026 20:5 -1003611124015",
-      "file_id": null,
-      "group_id": "-1003611124015",
-      "schedule_time": "2026-03-10T20:15:00+07:00",
-      "status": "pending",
-      "forward_sender_name": null,
-      "created_at": "2026-03-10T13:14:25.552698"
     }
   ],
-  "next_id": 12
+  "next_id": 13
 }
