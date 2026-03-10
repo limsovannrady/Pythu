@@ -340,9 +340,9 @@ async def list_schedules(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     response = MESSAGES["list_header"] + "\n\n"
-    for i, schedule in enumerate(pending_schedules, 1):
+    for schedule in pending_schedules:
         date_str, time_str = format_time(schedule['schedule_time'])
-        response += f"#{i} {date_str} {time_str}\nGroup: {schedule['group_id']}\nStatus: Pending ⏳\n\n"
+        response += f"#{schedule['id']} {date_str} {time_str}\nGroup: {schedule['group_id']}\nStatus: Pending ⏳\n\n"
     
     await update.message.reply_text(response)
 
