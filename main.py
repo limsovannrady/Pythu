@@ -86,109 +86,23 @@ async def parse_schedule_format(text: str) -> Optional[dict]:
         return None
 
 async def send_scheduled_message(schedule_id: int):
-    """Send a scheduled message to the group"""
+    """Send a scheduled message to the group using forward_message"""
     schedule = db.get_schedule(schedule_id)
     if not schedule:
         return
     
     try:
-        msg_type = schedule["message_type"]
         group_id = int(schedule["group_id"])
+        source_chat_id = schedule["source_chat_id"]
+        source_message_id = schedule["source_message_id"]
         bot = app_instance.bot
         
-        # Prepare caption with sender info if forwarded
-        caption = None
-        parse_mode_caption = None
-        if schedule["forward_sender_name"]:
-            caption = f"<blockquote>Forwarded from <b>{schedule['forward_sender_name']}</b></blockquote>\n\n{schedule['message_content']}"
-            parse_mode_caption = 'HTML'
-        
-        # Send based on message type
-        if msg_type == "text":
-            text_to_send = schedule['message_content']
-            parse_mode = None
-            if schedule["forward_sender_name"]:
-                text_to_send = f"<blockquote>Forwarded from <b>{schedule['forward_sender_name']}</b></blockquote>\n\n{schedule['message_content']}"
-                parse_mode = 'HTML'
-            await bot.send_message(
-                chat_id=group_id,
-                text=text_to_send,
-                parse_mode=parse_mode
-            )
-        elif msg_type == "photo":
-            await bot.send_photo(
-                chat_id=group_id,
-                photo=schedule['file_id'],
-                caption=caption or schedule['message_content'],
-                parse_mode=parse_mode_caption
-            )
-        elif msg_type == "video":
-            await bot.send_video(
-                chat_id=group_id,
-                video=schedule['file_id'],
-                caption=caption or schedule['message_content'],
-                parse_mode=parse_mode_caption
-            )
-        elif msg_type == "document":
-            await bot.send_document(
-                chat_id=group_id,
-                document=schedule['file_id'],
-                caption=caption or schedule['message_content'],
-                parse_mode=parse_mode_caption
-            )
-        elif msg_type == "voice":
-            await bot.send_voice(
-                chat_id=group_id,
-                voice=schedule['file_id'],
-                caption=caption or schedule['message_content'],
-                parse_mode=parse_mode_caption
-            )
-        elif msg_type == "video_note":
-            await bot.send_video_note(
-                chat_id=group_id,
-                video_note=schedule['file_id']
-            )
-        elif msg_type == "audio":
-            await bot.send_audio(
-                chat_id=group_id,
-                audio=schedule['file_id'],
-                caption=caption or schedule['message_content'],
-                parse_mode=parse_mode_caption
-            )
-        elif msg_type == "animation":
-            await bot.send_animation(
-                chat_id=group_id,
-                animation=schedule['file_id'],
-                caption=caption or schedule['message_content'],
-                parse_mode=parse_mode_caption
-            )
-        elif msg_type == "sticker":
-            await bot.send_sticker(
-                chat_id=group_id,
-                sticker=schedule['file_id']
-            )
-        elif msg_type == "contact":
-            contact_data = json.loads(schedule['message_content'])
-            await bot.send_contact(
-                chat_id=group_id,
-                phone_number=contact_data['phone'],
-                first_name=contact_data['first_name']
-            )
-        elif msg_type == "location":
-            loc_data = json.loads(schedule['message_content'])
-            await bot.send_location(
-                chat_id=group_id,
-                latitude=loc_data['latitude'],
-                longitude=loc_data['longitude']
-            )
-        elif msg_type == "poll":
-            poll_data = json.loads(schedule['message_content'])
-            await bot.send_poll(
-                chat_id=group_id,
-                question=poll_data['question'],
-                options=poll_data['options'],
-                is_quiz=poll_data.get('is_quiz', False)
-            )
+        # Forward the message from source to group
+        await bot.forward_message(
+            chat_id=group_id,
+            from_chat_id=source_chat_id,
+            message_id=source_message_id
+        )
         
         # Update status to sent
         db.update_status(schedule_id, "sent")
@@ -239,69 +153,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # Get replied message
     replied_msg = update.message.reply_to_message
-    msg_type = "text"
-    msg_content = ""
-    file_id = None
+    source_message_id = replied_msg.message_id
+    source_chat_id = OWNER_ID  # The message is in the owner's private chat with the bot
+    
+    # Check for forwarded message to track original sender
     forward_sender_name = None
-    
-    # Detect message type and extract content
-    if replied_msg.text:
-        msg_type = "text"
-        msg_content = replied_msg.text
-    elif replied_msg.photo:
-        msg_type = "photo"
-        file_id = replied_msg.photo[-1].file_id
-        msg_content = replied_msg.caption or ""
-    elif replied_msg.video:
-        msg_type = "video"
-        file_id = replied_msg.video.file_id
-        msg_content = replied_msg.caption or ""
-    elif replied_msg.document:
-        msg_type = "document"
-        file_id = replied_msg.document.file_id
-        msg_content = replied_msg.caption or ""
-    elif replied_msg.voice:
-        msg_type = "voice"
-        file_id = replied_msg.voice.file_id
-        msg_content = replied_msg.caption or ""
-    elif replied_msg.video_note:
-        msg_type = "video_note"
-        file_id = replied_msg.video_note.file_id
-    elif replied_msg.audio:
-        msg_type = "audio"
-        file_id = replied_msg.audio.file_id
-        msg_content = replied_msg.caption or ""
-    elif replied_msg.animation:
-        msg_type = "animation"
-        file_id = replied_msg.animation.file_id
-        msg_content = replied_msg.caption or ""
-    elif replied_msg.sticker:
-        msg_type = "sticker"
-        file_id = replied_msg.sticker.file_id
-    elif replied_msg.contact:
-        msg_type = "contact"
-        contact = replied_msg.contact
-        msg_content = json.dumps({
-            "phone": contact.phone_number,
-            "first_name": contact.first_name,
-            "last_name": contact.last_name or ""
-        })
-    elif replied_msg.location:
-        msg_type = "location"
-        msg_content = json.dumps({
-            "latitude": replied_msg.location.latitude,
-            "longitude": replied_msg.location.longitude
-        })
-    elif replied_msg.poll:
-        msg_type = "poll"
-        poll = replied_msg.poll
-        msg_content = json.dumps({
-            "question": poll.question,
-            "options": [opt.text for opt in poll.options],
-            "is_quiz": poll.is_quiz
-        })
-    
-    # Check for forwarded message
     if hasattr(replied_msg, 'forward_from_user') and replied_msg.forward_from_user:
         forward_sender_name = replied_msg.forward_from_user.first_name
         if replied_msg.forward_from_user.last_name:
@@ -311,12 +167,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # Add schedule to database
     schedule_id = db.add_schedule(
-        message_type=msg_type,
-        message_content=msg_content,
+        source_chat_id=source_chat_id,
+        source_message_id=source_message_id,
         group_id=schedule_data["group_id"],
         schedule_time=schedule_data["datetime"].isoformat(),
-        forward_sender_name=forward_sender_name,
-        file_id=file_id
+        forward_sender_name=forward_sender_name
     )
     
     # Schedule the message

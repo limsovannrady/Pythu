@@ -3,7 +3,7 @@
 ## Project Overview
 A Khmer-language Telegram bot for scheduling messages to groups with the following features:
 - Schedule messages by replying to a message with date/time format
-- Support for all Telegram message types (text, photo, video, document, etc.)
+- Uses `bot.forward_message()` to directly forward messages (preserves all formatting and media)
 - Forward sender detection for forwarded messages
 - Schedule status tracking (Pending/Sent)
 - Owner-only access control
@@ -20,8 +20,8 @@ A Khmer-language Telegram bot for scheduling messages to groups with the followi
 ## Key Features Implemented
 1. **Schedule Format**: DD-MM-YYYY HH:MM GROUP_ID
 2. **Reply-based Scheduling**: Reply to any message with schedule format
-3. **Message Types**: Text, Photo, Video, Document, Voice, Audio, Animation, Sticker, Contact, Location, Poll
-4. **Forward Detection**: Extracts and displays original sender name
+3. **Message Forwarding**: Uses `forward_message()` to preserve original formatting and all media types automatically
+4. **Forward Detection**: Extracts and displays original sender name for forwarded messages
 5. **Status System**: Pending/Sent status tracking
 6. **Commands**: /start, /list, /delete [ID]
 7. **Khmer Language**: All messages in Khmer
@@ -33,9 +33,8 @@ A Khmer-language Telegram bot for scheduling messages to groups with the followi
   "schedules": [
     {
       "id": 1,
-      "message_type": "text",
-      "message_content": "Hello",
-      "file_id": null,
+      "source_chat_id": 5002402843,
+      "source_message_id": 2547,
       "group_id": "-1001234567890",
       "schedule_time": "2026-03-25T20:00:00+07:00",
       "status": "pending",
@@ -46,6 +45,7 @@ A Khmer-language Telegram bot for scheduling messages to groups with the followi
   "next_id": 2
 }
 ```
+**Note**: `source_chat_id` is the owner's private chat with the bot, `source_message_id` is the message ID to be forwarded.
 
 ## Files
 - `main.py`: Main bot code with all handlers
