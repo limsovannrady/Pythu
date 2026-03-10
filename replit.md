@@ -38,14 +38,13 @@ A Khmer-language Telegram bot for scheduling messages to groups with the followi
       "group_id": "-1001234567890",
       "schedule_time": "2026-03-25T20:00:00+07:00",
       "status": "pending",
-      "forward_sender_name": null,
       "created_at": "2026-03-10T..."
     }
   ],
   "next_id": 2
 }
 ```
-**Note**: `source_chat_id` is the owner's private chat with the bot, `source_message_id` is the message ID to be forwarded.
+**Note**: `source_chat_id` is the owner's private chat with the bot, `source_message_id` is the message ID to be forwarded. Messages are forwarded as-is - no "forwarded from" attribution is added.
 
 ## Files
 - `main.py`: Main bot code with all handlers

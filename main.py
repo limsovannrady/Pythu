@@ -156,22 +156,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     source_message_id = replied_msg.message_id
     source_chat_id = OWNER_ID  # The message is in the owner's private chat with the bot
     
-    # Check for forwarded message to track original sender
-    forward_sender_name = None
-    if hasattr(replied_msg, 'forward_from_user') and replied_msg.forward_from_user:
-        forward_sender_name = replied_msg.forward_from_user.first_name
-        if replied_msg.forward_from_user.last_name:
-            forward_sender_name += f" {replied_msg.forward_from_user.last_name}"
-    elif hasattr(replied_msg, 'forward_sender_name') and replied_msg.forward_sender_name:
-        forward_sender_name = replied_msg.forward_sender_name
-    
     # Add schedule to database
     schedule_id = db.add_schedule(
         source_chat_id=source_chat_id,
         source_message_id=source_message_id,
         group_id=schedule_data["group_id"],
-        schedule_time=schedule_data["datetime"].isoformat(),
-        forward_sender_name=forward_sender_name
+        schedule_time=schedule_data["datetime"].isoformat()
     )
     
     # Schedule the message

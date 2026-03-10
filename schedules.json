@@ -1,0 +1,15 @@
+{
+  "schedules": [
+    {
+      "id": 3,
+      "source_chat_id": 5002402843,
+      "source_message_id": 1244,
+      "group_id": "-1003611124015",
+      "schedule_time": "2026-03-10T21:08:00+07:00",
+      "status": "pending",
+      "forward_sender_name": null,
+      "created_at": "2026-03-10T14:07:12.566405"
+    }
+  ],
+  "next_id": 4
+}
