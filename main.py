@@ -36,6 +36,8 @@ MESSAGES = {
     "no_schedules": "📋 គ្មានលេខកាលវិ按",
     "deleted": "🗑 Schedule #{id} ត្រូវបានលុបរួចរាល់",
     "delete_error": "❌ មិនរកឃើញលេខកាលវិពន្ធ #{id}",
+    "cleaned": "🧹 បានលុប {count} Schedule ដែលបានផ្ញើជោគជ័យ",
+    "no_sent": "📋 គ្មាន Schedule ដែលបានផ្ញើទេ",
 }
 
 def format_time(dt_str: str) -> tuple:
@@ -371,6 +373,32 @@ async def delete_schedule(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except:
         await update.message.reply_text("❌ ប្រឹងម្តងទៀត")
 
+async def clean_sent_schedules(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Delete all sent schedules"""
+    # Check private chat first (silent ignore if not)
+    if not await check_private(update):
+        return
+    
+    if not await check_owner(update):
+        await update.message.reply_text(MESSAGES["owner_only"])
+        return
+    
+    schedules = db.get_all_schedules()
+    sent_schedules = [s for s in schedules if s['status'] == "sent"]
+    
+    if not sent_schedules:
+        await update.message.reply_text(MESSAGES["no_sent"])
+        return
+    
+    for schedule in sent_schedules:
+        db.delete_schedule(schedule['id'])
+        try:
+            scheduler.remove_job(f"schedule_{schedule['id']}")
+        except:
+            pass
+    
+    await update.message.reply_text(MESSAGES["cleaned"].format(count=len(sent_schedules)))
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Start command"""
     # Check private chat first (silent ignore if not)
@@ -385,7 +413,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "👋 សូមស្វាគមន៍មកកាន់ Schedule Bot!\n\n"
         "📋 ការណ្តើម៖\n"
         "/list - ដើម្បីមើលលេខកាលវិពន្ធ\n"
-        "/delete [ID] - ដើម្បីលុបលេខកាលវិពន្ធ\n\n"
+        "/delete [ID] - ដើម្បីលុបលេខកាលវិពន្ធ\n"
+        "/clean_sent - ដើម្បីលុប Schedule ដែលបានផ្ញើ\n\n"
         "💬 ដើម្បីកំណត់ពេល:\n"
         "1️⃣ ផ្ញើសារណាមួយ\n"
         "2️⃣ ឆ្លើយតម្លើងលើសារ\n"
@@ -409,6 +438,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("list", list_schedules))
     app.add_handler(CommandHandler("delete", delete_schedule))
+    app.add_handler(CommandHandler("clean_sent", clean_sent_schedules))
     app.add_handler(MessageHandler(filters.REPLY & ~filters.COMMAND, handle_message))
     
     # Use webhook if URL is provided, otherwise polling
