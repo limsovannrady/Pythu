@@ -319,6 +319,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def list_schedules(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """List all schedules"""
+    # Check private chat first (silent ignore if not)
+    if not await check_private(update):
+        return
+    
     if not await check_owner(update):
         await update.message.reply_text(MESSAGES["owner_only"])
         return
@@ -338,6 +342,10 @@ async def list_schedules(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def delete_schedule(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Delete a schedule"""
+    # Check private chat first (silent ignore if not)
+    if not await check_private(update):
+        return
+    
     if not await check_owner(update):
         await update.message.reply_text(MESSAGES["owner_only"])
         return
@@ -363,6 +371,10 @@ async def delete_schedule(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Start command"""
+    # Check private chat first (silent ignore if not)
+    if not await check_private(update):
+        return
+    
     if not await check_owner(update):
         await update.message.reply_text(MESSAGES["owner_only"])
         return
