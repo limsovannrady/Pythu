@@ -341,7 +341,7 @@ async def list_schedules(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for i, schedule in enumerate(schedules, 1):
         date_str, time_str = format_time(schedule['schedule_time'])
         status_text = "Pending ⏳" if schedule['status'] == "pending" else "បានផ្ញើ ✅"
-        response += f"{i}️⃣ {date_str} {time_str}\nGroup: {schedule['group_id']}\nStatus: {status_text}\n\n"
+        response += f"{i}. {date_str} {time_str}\nGroup: {schedule['group_id']}\nStatus: {status_text}\n\n"
     
     await update.message.reply_text(response)
 
