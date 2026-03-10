@@ -285,11 +285,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         })
     
     # Check for forwarded message
-    if replied_msg.forward_from:
-        forward_sender_name = replied_msg.forward_from.first_name
-        if replied_msg.forward_from.last_name:
-            forward_sender_name += f" {replied_msg.forward_from.last_name}"
-    elif replied_msg.forward_sender_name:
+    if hasattr(replied_msg, 'forward_from_user') and replied_msg.forward_from_user:
+        forward_sender_name = replied_msg.forward_from_user.first_name
+        if replied_msg.forward_from_user.last_name:
+            forward_sender_name += f" {replied_msg.forward_from_user.last_name}"
+    elif hasattr(replied_msg, 'forward_sender_name') and replied_msg.forward_sender_name:
         forward_sender_name = replied_msg.forward_sender_name
     
     # Add schedule to database
