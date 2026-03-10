@@ -1,1 +1,16 @@
-{"schedules": [], "next_id": 4}
+{
+  "schedules": [
+    {
+      "id": 4,
+      "message_type": "text",
+      "message_content": "✅ សារត្រូវបានផ្ញើដោយជោគជ័យ\n\n📅 10-03-2026\n⏰ 19:55\n👥 Group ID: -1003611124015\n📊 Status: បានផ្ញើ ✅",
+      "file_id": null,
+      "group_id": "-1003611124015",
+      "schedule_time": "2026-03-10T19:57:00+07:00",
+      "status": "sent",
+      "forward_sender_name": null,
+      "created_at": "2026-03-10T12:56:52.232986"
+    }
+  ],
+  "next_id": 5
+}
