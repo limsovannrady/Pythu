@@ -93,3 +93,20 @@ class Database:
                 json.dump(data, f, indent=2, ensure_ascii=False)
             return True
         return False
+    
+    def renumber_schedules(self):
+        """Renumber all schedules starting from 1 to eliminate gaps"""
+        with open(self.db_file, 'r') as f:
+            data = json.load(f)
+        
+        # Only renumber if there are schedules
+        if data["schedules"]:
+            # Renumber all schedules sequentially
+            for idx, schedule in enumerate(data["schedules"], start=1):
+                schedule["id"] = idx
+            
+            # Reset next_id to be one more than the highest ID
+            data["next_id"] = len(data["schedules"]) + 1
+            
+            with open(self.db_file, 'w') as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)

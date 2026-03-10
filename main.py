@@ -332,6 +332,9 @@ async def list_schedules(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(MESSAGES["owner_only"])
         return
     
+    # Renumber schedules to eliminate gaps from deletions
+    db.renumber_schedules()
+    
     schedules = db.get_all_schedules()
     pending_schedules = [s for s in schedules if s['status'] == 'pending']
     
