@@ -190,6 +190,9 @@ async def send_scheduled_message(schedule_id: int):
         )
         await bot.send_message(chat_id=OWNER_ID, text=notification)
         
+        # Delete schedule from list after successful send
+        db.delete_schedule(schedule_id)
+        
         logger.info(f"Sent scheduled message {schedule_id}")
     except Exception as e:
         logger.error(f"Error sending scheduled message {schedule_id}: {e}")
