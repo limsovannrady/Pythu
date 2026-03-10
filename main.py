@@ -98,41 +98,50 @@ async def send_scheduled_message(schedule_id: int):
         
         # Prepare caption with sender info if forwarded
         caption = None
+        parse_mode_caption = None
         if schedule["forward_sender_name"]:
-            caption = f"📩 សារលាក់ទុក\n\n👤 ចាប់ផ្តើមពី: {schedule['forward_sender_name']}\n\n{schedule['message_content']}"
+            caption = f"<blockquote>Forwarded from <b>{schedule['forward_sender_name']}</b></blockquote>\n\n{schedule['message_content']}"
+            parse_mode_caption = 'HTML'
         
         # Send based on message type
         if msg_type == "text":
             text_to_send = schedule['message_content']
+            parse_mode = None
             if schedule["forward_sender_name"]:
-                text_to_send = f"📩 សារលាក់ទុក\n\n👤 ចាប់ផ្តើមពី: {schedule['forward_sender_name']}\n\n{schedule['message_content']}"
+                text_to_send = f"<blockquote>Forwarded from <b>{schedule['forward_sender_name']}</b></blockquote>\n\n{schedule['message_content']}"
+                parse_mode = 'HTML'
             await bot.send_message(
                 chat_id=group_id,
-                text=text_to_send
+                text=text_to_send,
+                parse_mode=parse_mode
             )
         elif msg_type == "photo":
             await bot.send_photo(
                 chat_id=group_id,
                 photo=schedule['file_id'],
-                caption=caption or schedule['message_content']
+                caption=caption or schedule['message_content'],
+                parse_mode=parse_mode_caption
             )
         elif msg_type == "video":
             await bot.send_video(
                 chat_id=group_id,
                 video=schedule['file_id'],
-                caption=caption or schedule['message_content']
+                caption=caption or schedule['message_content'],
+                parse_mode=parse_mode_caption
             )
         elif msg_type == "document":
             await bot.send_document(
                 chat_id=group_id,
                 document=schedule['file_id'],
-                caption=caption or schedule['message_content']
+                caption=caption or schedule['message_content'],
+                parse_mode=parse_mode_caption
             )
         elif msg_type == "voice":
             await bot.send_voice(
                 chat_id=group_id,
                 voice=schedule['file_id'],
-                caption=caption or schedule['message_content']
+                caption=caption or schedule['message_content'],
+                parse_mode=parse_mode_caption
             )
         elif msg_type == "video_note":
             await bot.send_video_note(
@@ -143,13 +152,15 @@ async def send_scheduled_message(schedule_id: int):
             await bot.send_audio(
                 chat_id=group_id,
                 audio=schedule['file_id'],
-                caption=caption or schedule['message_content']
+                caption=caption or schedule['message_content'],
+                parse_mode=parse_mode_caption
             )
         elif msg_type == "animation":
             await bot.send_animation(
                 chat_id=group_id,
                 animation=schedule['file_id'],
-                caption=caption or schedule['message_content']
+                caption=caption or schedule['message_content'],
+                parse_mode=parse_mode_caption
             )
         elif msg_type == "sticker":
             await bot.send_sticker(
