@@ -50,22 +50,38 @@ A Khmer-language Telegram bot for scheduling messages to groups with the followi
 - `main.py`: Main bot code with all handlers
 - `database.py`: Database abstraction for JSON storage
 - `.env.example`: Environment variables template
-- `schedules.json`: Auto-created database file
+- `Dockerfile`: Docker container configuration for Render
+- `.dockerignore`: Files to exclude from Docker build
+- `requirements.txt`: Python dependencies
+- `render.yaml`: Render deployment configuration
+- `schedules.json`: Auto-created database file (stored in /data on Render)
 
 ## Environment Variables Required
-- `BOT_TOKEN`: Telegram bot token
-- `OWNER_ID`: Owner user ID for access control
+- `BOT_TOKEN`: Telegram bot token (required, no default)
+- `OWNER_ID`: Owner user ID for access control (required, no default)
 - `WEBHOOK_URL`: (Optional) For webhook deployment
 - `PORT`: (Optional) Port for webhook, defaults to 8080
+- `DATA_DIR`: (Optional) Path for database storage, defaults to /data
 
-## Running the Bot
+## Running Locally
 ```bash
 pip install -r requirements.txt
-python main.py
+BOT_TOKEN=xxx OWNER_ID=yyy python main.py
 ```
 
-Uses polling by default (no WEBHOOK_URL), or webhook if WEBHOOK_URL is set.
+## Docker Deployment on Render
+1. Push code to GitHub
+2. Create new Web Service on Render → "Docker" runtime
+3. Set environment variables: `BOT_TOKEN`, `OWNER_ID`
+4. Add Persistent Disk mounted at `/data` (to preserve schedules)
+5. Deploy
+
+Uses polling by default (no WEBHOOK_URL set), or webhook mode if WEBHOOK_URL is provided.
 
 ## Timezone
 - Fixed to Asia/Phnom_Penh (Cambodia timezone)
 - Uses 24-hour time format
+
+## Security
+- BOT_TOKEN and OWNER_ID have no hardcoded defaults — must be set as env vars
+- Raises ValueError on startup if required vars are missing

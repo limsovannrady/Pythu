@@ -4,10 +4,12 @@ from pathlib import Path
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
-DB_FILE = "schedules.json"
+DATA_DIR = os.getenv("DATA_DIR", "/data")
+DB_FILE = os.path.join(DATA_DIR, "schedules.json")
 
 class Database:
     def __init__(self):
+        os.makedirs(DATA_DIR, exist_ok=True)
         self.db_file = DB_FILE
         self._ensure_db()
     

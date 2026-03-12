@@ -14,8 +14,15 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Load environment variables
-BOT_TOKEN = os.getenv("BOT_TOKEN", "8507971493:AAHI1qvmEof07K2pn8yXtO4eEFllWeLj_98")
-OWNER_ID = int(os.getenv("OWNER_ID", "8377642006"))
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+if not BOT_TOKEN:
+    raise ValueError("BOT_TOKEN environment variable is required")
+
+_owner_id = os.getenv("OWNER_ID")
+if not _owner_id:
+    raise ValueError("OWNER_ID environment variable is required")
+OWNER_ID = int(_owner_id)
+
 WEBHOOK_URL = os.getenv("WEBHOOK_URL", "")
 PORT = int(os.getenv("PORT", "8080"))
 

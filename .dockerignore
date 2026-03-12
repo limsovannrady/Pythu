@@ -1,0 +1,17 @@
+.git
+.gitignore
+.env
+.env.example
+.local
+.agents
+.cache
+.upm
+.pythonlibs
+__pycache__
+*.py[cod]
+*.pyc
+uv.lock
+attached_assets
+generated-icon.png
+replit.md
+schedules.json
